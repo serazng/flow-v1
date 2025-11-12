@@ -1,0 +1,135 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Build outputs
+dist/
+build/
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+.env.test
+
+# IDE
+.cursor/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+agents/
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Go
+*.test
+*.out
+*.prof
+go.work
+go.work.sum
+# Go binaries
+server
+backend/server
+backend/bin/
+# Go test coverage
+*.coverprofile
+coverage.out
+coverage.html
+coverage/
+
+# Frontend
+frontend/dist/
+frontend/dist-ssr/
+frontend/.vite/
+frontend/.vite-cache/
+frontend/.cache/
+frontend/.parcel-cache/
+frontend/.next/
+frontend/.nuxt/
+frontend/.output/
+frontend/.svelte-kit/
+
+# MCP Server
+mcp-server/dist/
+mcp-server/.tsbuildinfo
+mcp-server/*.tsbuildinfo
+
+# Backend
+backend/docs/docs.go
+backend/docs/swagger.json
+backend/docs/swagger.yaml
+backend/server
+backend/bin/
+
+# TypeScript
+*.tsbuildinfo
+.tsbuildinfo
+
+# Testing
+.nyc_output/
+coverage/
+*.lcov
+.jest/
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+.cache/
+
+# Package manager
+.pnp
+.pnp.js
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# Misc
+*.bak
+*.backup
+*.orig
+*.rej
+*.swo
+*.swp
+
