@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import SubtaskListSkeleton from './SubtaskListSkeleton';
 
 interface SubtaskListProps {
   todoId: number;
@@ -103,7 +104,7 @@ export default function SubtaskList({ todoId, isExpanded }: SubtaskListProps) {
           </div>
 
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading subtasks...</p>
+            <SubtaskListSkeleton />
           ) : (
             <>
               <div className="space-y-2">

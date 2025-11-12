@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import TodoForm from './TodoForm';
 import SubtaskList from './SubtaskList';
+import TodoListSkeleton from './TodoListSkeleton';
 
 export default function TodoList() {
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -157,13 +158,7 @@ export default function TodoList() {
   };
 
   if (loading) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <p>Loading todos...</p>
-        </CardContent>
-      </Card>
-    );
+    return <TodoListSkeleton />;
   }
 
   return (
