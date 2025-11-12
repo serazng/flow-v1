@@ -89,8 +89,8 @@ export default function SubtaskList({ todoId, isExpanded }: SubtaskListProps) {
   const progressText = totalCount > 0 ? `${completedCount} of ${totalCount} completed` : 'No subtasks yet';
 
   return (
-    <Card className="mt-2 ml-8 border-l-2 border-l-gray-300 dark:border-l-gray-700">
-      <CardContent className="p-4">
+    <Card className="mt-2 ml-4 md:ml-8 border-l-2 border-l-gray-300 dark:border-l-gray-700">
+      <CardContent className="p-4 md:p-6">
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="text-sm font-medium text-muted-foreground">
@@ -132,7 +132,7 @@ export default function SubtaskList({ todoId, isExpanded }: SubtaskListProps) {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="opacity-0 group-hover:opacity-100 h-6 px-2 text-xs"
+                        className="opacity-0 group-hover:opacity-100 text-xs min-h-[48px] md:min-h-0 md:h-6 md:px-2"
                         onClick={() => handleDeleteSubtask(subtask.id)}
                       >
                         Delete
@@ -142,7 +142,7 @@ export default function SubtaskList({ todoId, isExpanded }: SubtaskListProps) {
                 )}
               </div>
 
-              <div className="flex gap-2 pt-2 border-t">
+              <div className="flex flex-col gap-2 pt-2 border-t sm:flex-row">
                 <Input
                   placeholder="Add a subtask..."
                   value={newSubtaskTitle}
@@ -152,13 +152,13 @@ export default function SubtaskList({ todoId, isExpanded }: SubtaskListProps) {
                       handleAddSubtask();
                     }
                   }}
-                  className="h-8 text-sm"
+                  className="h-12 text-sm md:h-10"
                 />
                 <Button
                   size="sm"
                   onClick={handleAddSubtask}
                   disabled={!newSubtaskTitle.trim() || isAdding}
-                  className="h-8"
+                  className="h-12 md:h-10"
                 >
                   Add
                 </Button>

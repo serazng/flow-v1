@@ -101,7 +101,7 @@ export default function TodoForm({
           </SelectContent>
         </Select>
       </div>
-      <Button type="submit" className="w-full">
+      <Button type="submit" className="w-full md:w-auto">
         {initialTitle ? 'Update Todo' : 'Create Todo'}
       </Button>
     </form>

@@ -13,6 +13,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import TodoForm from './TodoForm';
 import SubtaskList from './SubtaskList';
 import TodoListSkeleton from './TodoListSkeleton';
@@ -162,11 +169,11 @@ export default function TodoList() {
   }
 
   return (
-    <div className="container mx-auto p-4 max-w-4xl">
+    <div className="container mx-auto p-4 md:p-6 max-w-4xl">
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-4">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-center">
               <div>
                 <CardTitle>Todo List</CardTitle>
                 <CardDescription>Manage your tasks</CardDescription>
@@ -176,7 +183,7 @@ export default function TodoList() {
                 if (!open) setEditingTodo(null);
               }}>
                 <DialogTrigger asChild>
-                  <Button>Add Todo</Button>
+                  <Button className="w-full md:w-auto">Add Todo</Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
@@ -197,10 +204,10 @@ export default function TodoList() {
                 </DialogContent>
               </Dialog>
             </div>
-            <div className="flex gap-2 items-center">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center">
               <Label htmlFor="sortBy" className="text-sm">Sort by:</Label>
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger id="sortBy" className="w-40">
+                <SelectTrigger id="sortBy" className="w-full md:w-40">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -210,7 +217,7 @@ export default function TodoList() {
                 </SelectContent>
               </Select>
               <Select value={sortOrder} onValueChange={setSortOrder}>
-                <SelectTrigger id="sortOrder" className="w-32">
+                <SelectTrigger id="sortOrder" className="w-full md:w-32">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -228,9 +235,9 @@ export default function TodoList() {
             </Alert>
           )}
           {todos.length === 0 ? (
-            <p className="text-muted-foreground">No todos yet. Create one to get started!</p>
+            <p className="text-sm md:text-base text-muted-foreground">No todos yet. Create one to get started!</p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2 md:space-y-3">
               {todos.map((todo) => {
                 const overdue = isOverdue(todo);
                 const priorityClass = getPriorityColor(todo.priority);
@@ -239,11 +246,11 @@ export default function TodoList() {
                     key={todo.id} 
                     className={`${priorityClass} ${overdue ? 'border-2 border-red-500 bg-red-50 dark:bg-red-950' : ''}`}
                   >
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-4">
+                    <CardContent className="p-4 md:p-6">
+                      <div className="flex flex-col gap-4 md:flex-row md:items-start">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className={`font-semibold ${todo.status === 'done' ? 'line-through text-muted-foreground' : ''}`}>
+                            <h3 className={`font-semibold break-words ${todo.status === 'done' ? 'line-through text-muted-foreground' : ''}`}>
                               {todo.title}
                             </h3>
                             <Select
@@ -273,7 +280,7 @@ export default function TodoList() {
                             )}
                           </div>
                           {todo.description && (
-                            <p className={`text-sm text-muted-foreground ${todo.status === 'done' ? 'line-through' : ''}`}>
+                            <p className={`text-sm md:text-base text-muted-foreground ${todo.status === 'done' ? 'line-through' : ''}`}>
                               {todo.description}
                             </p>
                           )}
@@ -287,27 +294,52 @@ export default function TodoList() {
                               variant="ghost"
                               size="sm"
                               onClick={() => toggleSubtasks(todo.id)}
-                              className="text-xs h-6 px-2"
+                              className="text-xs"
                             >
                               {expandedTodos.has(todo.id) ? '▼' : '▶'} Subtasks
                             </Button>
                           </div>
                         </div>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEdit(todo)}
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDelete(todo.id)}
-                          >
-                            Delete
-                          </Button>
+                        <div className="flex gap-2 md:flex-shrink-0">
+                          {/* Mobile: Dropdown Menu */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="icon" className="md:hidden">
+                                <MoreVertical className="h-4 w-4" />
+                                <span className="sr-only">More actions</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEdit(todo)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleDelete(todo.id)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          {/* Desktop: Direct Buttons */}
+                          <div className="hidden md:flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEdit(todo)}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDelete(todo.id)}
+                            >
+                              Delete
+                            </Button>
+                          </div>
                         </div>
                       </div>
                       <SubtaskList 
