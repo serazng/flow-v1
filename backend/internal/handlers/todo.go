@@ -14,12 +14,13 @@ import (
 
 // GetTodos godoc
 // @Summary      List all todos
-// @Description  Get a list of all todo items with optional sorting
+// @Description  Get a list of all todo items with optional sorting and status filtering
 // @Tags         todos
 // @Accept       json
 // @Produce      json
 // @Param        sort_by  query     string  false  "Sort by field (due_date, priority, created_at)"  default(created_at)
 // @Param        order    query     string  false  "Sort order (asc, desc)"  default(desc)
+// @Param        status   query     string  false  "Filter by status (todo, in_progress, done)"
 // @Success      200      {array}   models.Todo
 // @Failure      500      {object}  map[string]string
 // @Router       /todos [get]
@@ -33,6 +34,7 @@ func GetTodos(c *gin.Context) {
 	// Get sorting parameters
 	sortBy := c.DefaultQuery("sort_by", "created_at")
 	order := c.DefaultQuery("order", "desc")
+	statusFilter := c.Query("status")
 
 	// Validate sort_by field
 	validSortFields := map[string]bool{
@@ -47,6 +49,16 @@ func GetTodos(c *gin.Context) {
 	// Validate order
 	if order != "asc" && order != "desc" {
 		order = "desc"
+	}
+
+	// Validate status filter
+	validStatuses := map[string]bool{
+		"todo":        true,
+		"in_progress": true,
+		"done":        true,
+	}
+	if statusFilter != "" && !validStatuses[statusFilter] {
+		statusFilter = ""
 	}
 
 	var orderByClause string
@@ -68,11 +80,20 @@ func GetTodos(c *gin.Context) {
 		orderByClause = "ORDER BY created_at " + order
 	}
 
+	// Build WHERE clause for status filter
+	whereClause := ""
+	queryArgs := []interface{}{}
+	if statusFilter != "" {
+		whereClause = "WHERE status = $1"
+		queryArgs = append(queryArgs, statusFilter)
+	}
+
 	rows, err := db.Pool.Query(c.Request.Context(), `
-		SELECT id, title, COALESCE(description, '') as description, completed, due_date, priority, created_at, updated_at 
+		SELECT id, title, COALESCE(description, '') as description, status, due_date, priority, created_at, updated_at 
 		FROM todos 
+		`+whereClause+`
 		`+orderByClause+`
-	`)
+	`, queryArgs...)
 	if err != nil {
 		log.Printf("Error querying todos: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch todos", "details": err.Error()})
@@ -83,7 +104,7 @@ func GetTodos(c *gin.Context) {
 	var todos []models.Todo
 	for rows.Next() {
 		var todo models.Todo
-		if err := rows.Scan(&todo.ID, &todo.Title, &todo.Description, &todo.Completed, &todo.DueDate, &todo.Priority, &todo.CreatedAt, &todo.UpdatedAt); err != nil {
+		if err := rows.Scan(&todo.ID, &todo.Title, &todo.Description, &todo.Status, &todo.DueDate, &todo.Priority, &todo.CreatedAt, &todo.UpdatedAt); err != nil {
 			log.Printf("Error scanning todo: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to scan todo", "details": err.Error()})
 			return
@@ -120,10 +141,10 @@ func GetTodo(c *gin.Context) {
 
 	var todo models.Todo
 	err = db.Pool.QueryRow(c.Request.Context(), `
-		SELECT id, title, COALESCE(description, '') as description, completed, due_date, priority, created_at, updated_at 
+		SELECT id, title, COALESCE(description, '') as description, status, due_date, priority, created_at, updated_at 
 		FROM todos 
 		WHERE id = $1
-	`, id).Scan(&todo.ID, &todo.Title, &todo.Description, &todo.Completed, &todo.DueDate, &todo.Priority, &todo.CreatedAt, &todo.UpdatedAt)
+	`, id).Scan(&todo.ID, &todo.Title, &todo.Description, &todo.Status, &todo.DueDate, &todo.Priority, &todo.CreatedAt, &todo.UpdatedAt)
 
 	if err == pgx.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Todo not found"})
@@ -170,13 +191,19 @@ func CreateTodo(c *gin.Context) {
 		priority = "Medium"
 	}
 
+	// Set default status if not provided
+	status := req.Status
+	if status == "" {
+		status = "todo"
+	}
+
 	var todo models.Todo
 	err := db.Pool.QueryRow(c.Request.Context(), `
-		INSERT INTO todos (title, description, completed, due_date, priority, created_at, updated_at)
+		INSERT INTO todos (title, description, status, due_date, priority, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-		RETURNING id, title, COALESCE(description, '') as description, completed, due_date, priority, created_at, updated_at
-	`, req.Title, description, false, req.DueDate, priority).Scan(
-		&todo.ID, &todo.Title, &todo.Description, &todo.Completed, &todo.DueDate, &todo.Priority, &todo.CreatedAt, &todo.UpdatedAt,
+		RETURNING id, title, COALESCE(description, '') as description, status, due_date, priority, created_at, updated_at
+	`, req.Title, description, status, req.DueDate, priority).Scan(
+		&todo.ID, &todo.Title, &todo.Description, &todo.Status, &todo.DueDate, &todo.Priority, &todo.CreatedAt, &todo.UpdatedAt,
 	)
 
 	if err != nil {
@@ -223,18 +250,26 @@ func UpdateTodo(c *gin.Context) {
 		description = req.Description
 	}
 
+	// Handle status update - use empty string check for optional field
+	var status interface{}
+	if req.Status == "" {
+		status = nil
+	} else {
+		status = req.Status
+	}
+
 	err = db.Pool.QueryRow(c.Request.Context(), `
 		UPDATE todos 
 		SET title = COALESCE($1, title),
 		    description = COALESCE($2, description),
-		    completed = COALESCE($3, completed),
+		    status = COALESCE($3, status),
 		    due_date = COALESCE($4, due_date),
 		    priority = COALESCE($5, priority),
 		    updated_at = NOW()
 		WHERE id = $6
-		RETURNING id, title, COALESCE(description, '') as description, completed, due_date, priority, created_at, updated_at
-	`, req.Title, description, req.Completed, req.DueDate, req.Priority, id).Scan(
-		&todo.ID, &todo.Title, &todo.Description, &todo.Completed, &todo.DueDate, &todo.Priority, &todo.CreatedAt, &todo.UpdatedAt,
+		RETURNING id, title, COALESCE(description, '') as description, status, due_date, priority, created_at, updated_at
+	`, req.Title, description, status, req.DueDate, req.Priority, id).Scan(
+		&todo.ID, &todo.Title, &todo.Description, &todo.Status, &todo.DueDate, &todo.Priority, &todo.CreatedAt, &todo.UpdatedAt,
 	)
 
 	if err == pgx.ErrNoRows {

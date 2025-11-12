@@ -11,10 +11,11 @@ const apiClient = axios.create({
 });
 
 export const todoApi = {
-  getAll: async (sortBy?: string, order?: string): Promise<Todo[]> => {
+  getAll: async (sortBy?: string, order?: string, status?: string): Promise<Todo[]> => {
     const params = new URLSearchParams();
     if (sortBy) params.append('sort_by', sortBy);
     if (order) params.append('order', order);
+    if (status) params.append('status', status);
     const queryString = params.toString();
     const url = queryString ? `/todos?${queryString}` : '/todos';
     const response = await apiClient.get<Todo[]>(url);

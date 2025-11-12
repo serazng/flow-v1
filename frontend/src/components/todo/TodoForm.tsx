@@ -11,11 +11,12 @@ import {
 } from '@/components/ui/select';
 
 interface TodoFormProps {
-  onSubmit: (title: string, description: string, dueDate?: string, priority?: string) => void;
+  onSubmit: (title: string, description: string, dueDate?: string, priority?: string, status?: string) => void;
   initialTitle?: string;
   initialDescription?: string;
   initialDueDate?: string;
   initialPriority?: string;
+  initialStatus?: string;
 }
 
 export default function TodoForm({ 
@@ -23,21 +24,24 @@ export default function TodoForm({
   initialTitle = '', 
   initialDescription = '',
   initialDueDate = '',
-  initialPriority = 'Medium'
+  initialPriority = 'Medium',
+  initialStatus = 'todo'
 }: TodoFormProps) {
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
   const [dueDate, setDueDate] = useState(initialDueDate);
   const [priority, setPriority] = useState(initialPriority || 'Medium');
+  const [status, setStatus] = useState(initialStatus || 'todo');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (title.trim()) {
-      onSubmit(title.trim(), description.trim(), dueDate || undefined, priority);
+      onSubmit(title.trim(), description.trim(), dueDate || undefined, priority, status);
       setTitle('');
       setDescription('');
       setDueDate('');
       setPriority('Medium');
+      setStatus('todo');
     }
   };
 
@@ -81,6 +85,19 @@ export default function TodoForm({
             <SelectItem value="High">High</SelectItem>
             <SelectItem value="Medium">Medium</SelectItem>
             <SelectItem value="Low">Low</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="status">Status</Label>
+        <Select value={status} onValueChange={setStatus}>
+          <SelectTrigger id="status">
+            <SelectValue placeholder="Select status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todo">Todo</SelectItem>
+            <SelectItem value="in_progress">In Progress</SelectItem>
+            <SelectItem value="done">Done</SelectItem>
           </SelectContent>
         </Select>
       </div>

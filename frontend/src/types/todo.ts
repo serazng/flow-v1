@@ -20,7 +20,7 @@ export interface Todo {
   id: number;
   title: string;
   description: string;
-  completed: boolean;
+  status: "todo" | "in_progress" | "done";
   due_date?: string;
   priority: string;
   subtasks?: Subtask[];
@@ -32,6 +32,7 @@ export interface Todo {
 export interface CreateTodoRequest {
   title: string;
   description?: string;
+  status?: "todo" | "in_progress" | "done";
   due_date?: string;
   priority?: "High" | "Medium" | "Low";
 }
@@ -39,7 +40,7 @@ export interface CreateTodoRequest {
 export interface UpdateTodoRequest {
   title?: string;
   description?: string;
-  completed?: boolean;
+  status?: "todo" | "in_progress" | "done";
   due_date?: string;
   priority?: "High" | "Medium" | "Low";
 }

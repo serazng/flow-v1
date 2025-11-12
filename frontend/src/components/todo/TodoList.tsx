@@ -3,7 +3,6 @@ import { todoApi } from '@/services/api';
 import type { Todo } from '@/types/todo';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Label } from '@/components/ui/label';
@@ -46,11 +45,12 @@ export default function TodoList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortBy, sortOrder]);
 
-  const handleCreate = async (title: string, description: string, dueDate?: string, priority?: string) => {
+  const handleCreate = async (title: string, description: string, dueDate?: string, priority?: string, status?: string) => {
     try {
       await todoApi.create({ 
         title, 
         description: description || undefined,
+        status: status as "todo" | "in_progress" | "done" | undefined,
         due_date: dueDate || undefined,
         priority: priority as "High" | "Medium" | "Low" | undefined
       });
@@ -62,12 +62,12 @@ export default function TodoList() {
     }
   };
 
-  const handleUpdate = async (id: number, title?: string, description?: string, completed?: boolean, dueDate?: string, priority?: string) => {
+  const handleUpdate = async (id: number, title?: string, description?: string, status?: string, dueDate?: string, priority?: string) => {
     try {
       await todoApi.update(id, { 
         title, 
         description, 
-        completed,
+        status: status as "todo" | "in_progress" | "done" | undefined,
         due_date: dueDate,
         priority: priority as "High" | "Medium" | "Low" | undefined
       });
@@ -88,8 +88,8 @@ export default function TodoList() {
     }
   };
 
-  const handleToggleComplete = (todo: Todo) => {
-    handleUpdate(todo.id, todo.title, todo.description, !todo.completed, todo.due_date, todo.priority);
+  const handleStatusChange = (todo: Todo, newStatus: "todo" | "in_progress" | "done") => {
+    handleUpdate(todo.id, todo.title, todo.description, newStatus, todo.due_date, todo.priority);
   };
 
   const handleEdit = (todo: Todo) => {
@@ -97,12 +97,13 @@ export default function TodoList() {
     setIsDialogOpen(true);
   };
 
-  const handleEditSubmit = async (title: string, description: string, dueDate?: string, priority?: string) => {
+  const handleEditSubmit = async (title: string, description: string, dueDate?: string, priority?: string, status?: string) => {
     if (editingTodo) {
       try {
         await todoApi.update(editingTodo.id, { 
           title, 
           description,
+          status: status as "todo" | "in_progress" | "done" | undefined,
           due_date: dueDate,
           priority: priority as "High" | "Medium" | "Low" | undefined
         });
@@ -123,7 +124,7 @@ export default function TodoList() {
   };
 
   const isOverdue = (todo: Todo): boolean => {
-    if (!todo.due_date || todo.completed) return false;
+    if (!todo.due_date || todo.status === "done") return false;
     const dueDate = new Date(todo.due_date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -196,6 +197,7 @@ export default function TodoList() {
                     initialDescription={editingTodo?.description}
                     initialDueDate={editingTodo?.due_date ? new Date(editingTodo.due_date).toISOString().split('T')[0] : ''}
                     initialPriority={editingTodo?.priority || 'Medium'}
+                    initialStatus={editingTodo?.status || 'todo'}
                   />
                 </DialogContent>
               </Dialog>
@@ -244,16 +246,24 @@ export default function TodoList() {
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start gap-4">
-                        <Checkbox
-                          checked={todo.completed}
-                          onCheckedChange={() => handleToggleComplete(todo)}
-                          className="mt-1"
-                        />
                         <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className={`font-semibold ${todo.completed ? 'line-through text-muted-foreground' : ''}`}>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className={`font-semibold ${todo.status === 'done' ? 'line-through text-muted-foreground' : ''}`}>
                               {todo.title}
                             </h3>
+                            <Select
+                              value={todo.status}
+                              onValueChange={(value) => handleStatusChange(todo, value as "todo" | "in_progress" | "done")}
+                            >
+                              <SelectTrigger className="h-7 w-32 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="todo">Todo</SelectItem>
+                                <SelectItem value="in_progress">In Progress</SelectItem>
+                                <SelectItem value="done">Done</SelectItem>
+                              </SelectContent>
+                            </Select>
                             <span className={`text-xs px-2 py-0.5 rounded ${
                               todo.priority === 'High' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
                               todo.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
@@ -268,7 +278,7 @@ export default function TodoList() {
                             )}
                           </div>
                           {todo.description && (
-                            <p className={`text-sm text-muted-foreground ${todo.completed ? 'line-through' : ''}`}>
+                            <p className={`text-sm text-muted-foreground ${todo.status === 'done' ? 'line-through' : ''}`}>
                               {todo.description}
                             </p>
                           )}
