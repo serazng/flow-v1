@@ -69,16 +69,18 @@ export default function TodoList({ priorityFilter, dueDateFilter }: TodoListProp
       const dueDate = todo.due_date ? new Date(todo.due_date) : null;
       
       switch (dueDateFilter) {
-        case 'today':
+        case 'today': {
           if (!dueDate) return false;
           const todayDate = new Date(dueDate);
           todayDate.setHours(0, 0, 0, 0);
           return todayDate.getTime() === today.getTime();
-        case 'this_week':
+        }
+        case 'this_week': {
           if (!dueDate) return false;
           const weekFromNow = new Date(today);
           weekFromNow.setDate(weekFromNow.getDate() + 7);
           return dueDate >= today && dueDate <= weekFromNow;
+        }
         case 'overdue':
           if (!dueDate || todo.status === 'done') return false;
           return dueDate < today;
@@ -110,14 +112,17 @@ export default function TodoList({ priorityFilter, dueDateFilter }: TodoListProp
 
   const handleUpdate = async (id: number, title?: string, description?: string, status?: string, dueDate?: string, priority?: string) => {
     try {
-      await todoApi.update(id, { 
+      const updatedTodo = await todoApi.update(id, { 
         title, 
         description, 
         status: status as "todo" | "in_progress" | "done" | undefined,
         due_date: dueDate,
         priority: priority as "High" | "Medium" | "Low" | undefined
       });
-      fetchTodos();
+      // Update state with server response
+      setTodos(prevTodos =>
+        prevTodos.map(t => t.id === updatedTodo.id ? updatedTodo : t)
+      );
     } catch (err) {
       setError('Failed to update todo');
       console.error(err);
@@ -127,7 +132,8 @@ export default function TodoList({ priorityFilter, dueDateFilter }: TodoListProp
   const handleDelete = async (id: number) => {
     try {
       await todoApi.delete(id);
-      fetchTodos();
+      // Remove todo from state directly
+      setTodos(prevTodos => prevTodos.filter(t => t.id !== id));
     } catch (err) {
       setError('Failed to delete todo');
       console.error(err);
@@ -146,16 +152,19 @@ export default function TodoList({ priorityFilter, dueDateFilter }: TodoListProp
   const handleEditSubmit = async (title: string, description: string, dueDate?: string, priority?: string, status?: string) => {
     if (editingTodo) {
       try {
-        await todoApi.update(editingTodo.id, { 
+        const updatedTodo = await todoApi.update(editingTodo.id, { 
           title, 
           description,
           status: status as "todo" | "in_progress" | "done" | undefined,
           due_date: dueDate,
           priority: priority as "High" | "Medium" | "Low" | undefined
         });
+        // Update state with server response
+        setTodos(prevTodos =>
+          prevTodos.map(t => t.id === updatedTodo.id ? updatedTodo : t)
+        );
         setIsDialogOpen(false);
         setEditingTodo(null);
-        fetchTodos();
       } catch (err) {
         setError('Failed to update todo');
         console.error(err);
