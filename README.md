@@ -12,8 +12,10 @@ React (Vite)  ←→  Go API (Gin)  ←→  PostgreSQL (Supabase)
                 Swagger/OpenAPI (auto-gen)
 ```
 
-**Backend**: Go, Gin, pgx/v5, Swagger (swaggo/swag) 
+**Backend**: Go, Gin, pgx/v5, Swagger (swaggo/swag)
+
 **Frontend**: React 19, TypeScript, Vite, Tailwind CSS, shadcn/ui
+
 **MCP Server**: TypeScript, Model Context Protocol SDK
 
 ## Quick Start
