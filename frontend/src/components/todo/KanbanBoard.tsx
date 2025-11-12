@@ -124,15 +124,17 @@ export default function KanbanBoard({ priorityFilter, dueDateFilter, onEdit }: K
     );
 
     try {
-      await todoApi.update(todoId, { 
+      const updatedTodo = await todoApi.update(todoId, { 
         status: newStatus,
         title: todo.title,
         description: todo.description,
         priority: todo.priority as 'High' | 'Medium' | 'Low',
         due_date: todo.due_date || undefined,
       });
-      // Refresh to get latest data
-      await fetchTodos();
+      // Update state with server response
+      setTodos(prevTodos =>
+        prevTodos.map(t => t.id === updatedTodo.id ? updatedTodo : t)
+      );
     } catch (err) {
       // Revert on error
       setTodos(previousTodos);
@@ -159,16 +161,19 @@ export default function KanbanBoard({ priorityFilter, dueDateFilter, onEdit }: K
   ) => {
     if (editingTodo) {
       try {
-        await todoApi.update(editingTodo.id, {
+        const updatedTodo = await todoApi.update(editingTodo.id, {
           title,
           description,
           status: status as Status | undefined,
           due_date: dueDate,
           priority: priority as 'High' | 'Medium' | 'Low' | undefined,
         });
+        // Update state with server response
+        setTodos(prevTodos =>
+          prevTodos.map(t => t.id === updatedTodo.id ? updatedTodo : t)
+        );
         setIsDialogOpen(false);
         setEditingTodo(null);
-        await fetchTodos();
       } catch (err) {
         setError('Failed to update todo');
         console.error(err);
