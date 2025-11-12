@@ -1,4 +1,4 @@
-import { resolve, normalize, relative, dirname } from 'path';
+import { resolve, normalize, relative, dirname, isAbsolute } from 'path';
 import { fileURLToPath } from 'url';
 import { access } from 'fs/promises';
 import { constants } from 'fs';
@@ -28,26 +28,34 @@ export function getWorkspaceRoot(): string {
 /**
  * Validate and resolve a path relative to workspace root
  * Prevents directory traversal attacks
+ * Handles both absolute and relative paths
  * 
- * @param relativePath - Path relative to workspace root
+ * @param inputPath - Path (absolute or relative to workspace root)
  * @returns Resolved absolute path
  * @throws Error if path is outside workspace or invalid
  */
-export function validateAndResolvePath(relativePath: string): string {
+export function validateAndResolvePath(inputPath: string): string {
   const workspaceRoot = getWorkspaceRoot();
-  
-  // Normalize the path to resolve . and .. components
-  const normalized = normalize(relativePath);
-  
-  // Remove leading slashes to make it relative
-  const cleanPath = normalized.replace(/^\/+/, '');
-  
-  // Resolve against workspace root
-  const fullPath = resolve(workspaceRoot, cleanPath);
   
   // Normalize both paths for comparison (handle trailing slashes, etc.)
   const normalizedRoot = resolve(workspaceRoot);
-  const normalizedFull = resolve(fullPath);
+  
+  let normalizedFull: string;
+  
+  // Check if the path is already absolute
+  if (isAbsolute(inputPath)) {
+    // Path is absolute - normalize it and validate it's within workspace
+    normalizedFull = resolve(normalize(inputPath));
+  } else {
+    // Path is relative - resolve it against workspace root
+    const normalized = normalize(inputPath);
+    
+    // Remove leading slashes to make it relative
+    const cleanPath = normalized.replace(/^\/+/, '');
+    
+    // Resolve against workspace root
+    normalizedFull = resolve(workspaceRoot, cleanPath);
+  }
   
   // Ensure the resolved path is within workspace root
   const relativeToRoot = relative(normalizedRoot, normalizedFull);
@@ -55,13 +63,13 @@ export function validateAndResolvePath(relativePath: string): string {
   // Check for directory traversal attempts
   // If relative path starts with .. or contains .., it's outside the root
   if (relativeToRoot.startsWith('..') || relativeToRoot.includes('..')) {
-    throw new Error(`Path traversal detected: ${relativePath} resolves outside workspace`);
+    throw new Error(`Path traversal detected: ${inputPath} resolves outside workspace`);
   }
   
   // Additional check: ensure the full path starts with the workspace root
   // Use normalized paths for cross-platform compatibility
   if (!normalizedFull.startsWith(normalizedRoot + '/') && normalizedFull !== normalizedRoot) {
-    throw new Error(`Path outside workspace: ${relativePath}`);
+    throw new Error(`Path outside workspace: ${inputPath}`);
   }
   
   return normalizedFull;
