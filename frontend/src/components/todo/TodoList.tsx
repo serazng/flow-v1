@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import TodoForm from './TodoForm';
+import SubtaskList from './SubtaskList';
 
 export default function TodoList() {
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -24,6 +25,7 @@ export default function TodoList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [sortBy, setSortBy] = useState<string>('created_at');
   const [sortOrder, setSortOrder] = useState<string>('desc');
+  const [expandedTodos, setExpandedTodos] = useState<Set<number>>(new Set());
 
   const fetchTodos = async () => {
     try {
@@ -139,6 +141,18 @@ export default function TodoList() {
       default:
         return '';
     }
+  };
+
+  const toggleSubtasks = (todoId: number) => {
+    setExpandedTodos(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(todoId)) {
+        newSet.delete(todoId);
+      } else {
+        newSet.add(todoId);
+      }
+      return newSet;
+    });
   };
 
   if (loading) {
@@ -263,6 +277,16 @@ export default function TodoList() {
                               Due: {formatDate(todo.due_date)}
                             </p>
                           )}
+                          <div className="mt-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleSubtasks(todo.id)}
+                              className="text-xs h-6 px-2"
+                            >
+                              {expandedTodos.has(todo.id) ? '▼' : '▶'} Subtasks
+                            </Button>
+                          </div>
                         </div>
                         <div className="flex gap-2">
                           <Button
@@ -281,6 +305,10 @@ export default function TodoList() {
                           </Button>
                         </div>
                       </div>
+                      <SubtaskList 
+                        todoId={todo.id} 
+                        isExpanded={expandedTodos.has(todo.id)} 
+                      />
                     </CardContent>
                   </Card>
                 );
