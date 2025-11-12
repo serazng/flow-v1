@@ -24,7 +24,12 @@ import TodoForm from './TodoForm';
 import SubtaskList from './SubtaskList';
 import TodoListSkeleton from './TodoListSkeleton';
 
-export default function TodoList() {
+interface TodoListProps {
+  priorityFilter?: string;
+  dueDateFilter?: string;
+}
+
+export default function TodoList({ priorityFilter, dueDateFilter }: TodoListProps) {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,6 +57,39 @@ export default function TodoList() {
     fetchTodos();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortBy, sortOrder]);
+
+  // Filter todos based on priority and due date
+  const filteredTodos = todos.filter(todo => {
+    if (priorityFilter && todo.priority !== priorityFilter) {
+      return false;
+    }
+    if (dueDateFilter) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const dueDate = todo.due_date ? new Date(todo.due_date) : null;
+      
+      switch (dueDateFilter) {
+        case 'today':
+          if (!dueDate) return false;
+          const todayDate = new Date(dueDate);
+          todayDate.setHours(0, 0, 0, 0);
+          return todayDate.getTime() === today.getTime();
+        case 'this_week':
+          if (!dueDate) return false;
+          const weekFromNow = new Date(today);
+          weekFromNow.setDate(weekFromNow.getDate() + 7);
+          return dueDate >= today && dueDate <= weekFromNow;
+        case 'overdue':
+          if (!dueDate || todo.status === 'done') return false;
+          return dueDate < today;
+        case 'none':
+          return !dueDate;
+        default:
+          return true;
+      }
+    }
+    return true;
+  });
 
   const handleCreate = async (title: string, description: string, dueDate?: string, priority?: string, status?: string) => {
     try {
@@ -234,11 +272,15 @@ export default function TodoList() {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          {todos.length === 0 ? (
-            <p className="text-sm md:text-base text-muted-foreground">No todos yet. Create one to get started!</p>
+          {filteredTodos.length === 0 ? (
+            <p className="text-sm md:text-base text-muted-foreground">
+              {todos.length === 0 
+                ? 'No todos yet. Create one to get started!'
+                : 'No todos match the current filters.'}
+            </p>
           ) : (
             <div className="space-y-2 md:space-y-3">
-              {todos.map((todo) => {
+              {filteredTodos.map((todo) => {
                 const overdue = isOverdue(todo);
                 const priorityClass = getPriorityColor(todo.priority);
                 return (
