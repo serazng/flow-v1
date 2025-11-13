@@ -15,10 +15,11 @@ type Status = 'todo' | 'in_progress' | 'done';
 interface KanbanBoardProps {
   priorityFilter?: string;
   dueDateFilter?: string;
+  storyPointsFilter?: string;
   onEdit?: (todo: Todo) => void;
 }
 
-export default function KanbanBoard({ priorityFilter, dueDateFilter, onEdit }: KanbanBoardProps) {
+export default function KanbanBoard({ priorityFilter, dueDateFilter, storyPointsFilter, onEdit }: KanbanBoardProps) {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,15 +35,41 @@ export default function KanbanBoard({ priorityFilter, dueDateFilter, onEdit }: K
     })
   );
 
+  const getStoryPointsRange = (filter?: string): { min?: number; max?: number } => {
+    if (!filter) return {};
+    switch (filter) {
+      case '1-2':
+        return { min: 1, max: 2 };
+      case '3':
+        return { min: 3, max: 3 };
+      case '5-8':
+        return { min: 5, max: 8 };
+      default:
+        return {};
+    }
+  };
+
   const fetchTodos = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await todoApi.getAll();
-      setTodos(data);
+      const storyPointsRange = getStoryPointsRange(storyPointsFilter);
+      const data = await todoApi.getAll(undefined, undefined, undefined, storyPointsRange.min, storyPointsRange.max);
+      // Ensure data is always an array (handle null responses from backend)
+      if (Array.isArray(data)) {
+        setTodos(data);
+      } else if (data === null || data === undefined) {
+        // Backend may return null when no results - treat as empty array
+        setTodos([]);
+      } else {
+        console.error('Unexpected API response format:', data);
+        setTodos([]);
+        setError('Invalid response from server');
+      }
     } catch (err) {
       setError('Failed to load todos');
       console.error(err);
+      setTodos([]); // Ensure todos is always an array
     } finally {
       setLoading(false);
     }
@@ -50,10 +77,12 @@ export default function KanbanBoard({ priorityFilter, dueDateFilter, onEdit }: K
 
   useEffect(() => {
     fetchTodos();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storyPointsFilter]);
 
   // Filter todos based on priority and due date
-  const filteredTodos = todos.filter(todo => {
+  const filteredTodos = (todos || []).filter(todo => {
+    if (!todo) return false;
     if (priorityFilter && priorityFilter !== 'all' && todo.priority !== priorityFilter) {
       return false;
     }
@@ -89,9 +118,9 @@ export default function KanbanBoard({ priorityFilter, dueDateFilter, onEdit }: K
 
   // Group todos by status
   const todosByStatus = {
-    todo: filteredTodos.filter(t => t.status === 'todo'),
-    in_progress: filteredTodos.filter(t => t.status === 'in_progress'),
-    done: filteredTodos.filter(t => t.status === 'done'),
+    todo: filteredTodos.filter(t => t && t.status === 'todo'),
+    in_progress: filteredTodos.filter(t => t && t.status === 'in_progress'),
+    done: filteredTodos.filter(t => t && t.status === 'done'),
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -110,7 +139,7 @@ export default function KanbanBoard({ priorityFilter, dueDateFilter, onEdit }: K
     const newStatus = over.id as Status;
 
     // Find the todo being dragged
-    const todo = todos.find(t => t.id === todoId);
+    const todo = (todos || []).find(t => t && t.id === todoId);
     if (!todo || todo.status === newStatus) {
       return;
     }
@@ -130,6 +159,7 @@ export default function KanbanBoard({ priorityFilter, dueDateFilter, onEdit }: K
         description: todo.description,
         priority: todo.priority as 'High' | 'Medium' | 'Low',
         due_date: todo.due_date || undefined,
+        story_points: todo.story_points ?? undefined,
       });
       // Update state with server response
       setTodos(prevTodos =>
@@ -157,7 +187,8 @@ export default function KanbanBoard({ priorityFilter, dueDateFilter, onEdit }: K
     description: string,
     dueDate?: string,
     priority?: string,
-    status?: string
+    status?: string,
+    storyPoints?: number
   ) => {
     if (editingTodo) {
       try {
@@ -167,6 +198,7 @@ export default function KanbanBoard({ priorityFilter, dueDateFilter, onEdit }: K
           status: status as Status | undefined,
           due_date: dueDate,
           priority: priority as 'High' | 'Medium' | 'Low' | undefined,
+          story_points: storyPoints,
         });
         // Update state with server response
         setTodos(prevTodos =>
@@ -181,7 +213,7 @@ export default function KanbanBoard({ priorityFilter, dueDateFilter, onEdit }: K
     }
   };
 
-  const activeTodo = activeId ? todos.find(t => t.id.toString() === activeId) : null;
+  const activeTodo = activeId ? (todos || []).find(t => t && t.id.toString() === activeId) : null;
 
   if (loading) {
     return (
@@ -263,6 +295,7 @@ export default function KanbanBoard({ priorityFilter, dueDateFilter, onEdit }: K
               }
               initialPriority={editingTodo.priority || 'Medium'}
               initialStatus={editingTodo.status || 'todo'}
+              initialStoryPoints={editingTodo.story_points}
             />
           )}
         </DialogContent>

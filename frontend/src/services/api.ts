@@ -10,12 +10,20 @@ const apiClient = axios.create({
   },
 });
 
+export interface VelocityResponse {
+  total_estimated: number;
+  completed: number;
+  remaining: number;
+}
+
 export const todoApi = {
-  getAll: async (sortBy?: string, order?: string, status?: string): Promise<Todo[]> => {
+  getAll: async (sortBy?: string, order?: string, status?: string, storyPointsMin?: number, storyPointsMax?: number): Promise<Todo[]> => {
     const params = new URLSearchParams();
     if (sortBy) params.append('sort_by', sortBy);
     if (order) params.append('order', order);
     if (status) params.append('status', status);
+    if (storyPointsMin !== undefined) params.append('story_points_min', storyPointsMin.toString());
+    if (storyPointsMax !== undefined) params.append('story_points_max', storyPointsMax.toString());
     const queryString = params.toString();
     const url = queryString ? `/todos?${queryString}` : '/todos';
     const response = await apiClient.get<Todo[]>(url);
@@ -39,6 +47,11 @@ export const todoApi = {
 
   delete: async (id: number): Promise<void> => {
     await apiClient.delete(`/todos/${id}`);
+  },
+
+  getVelocity: async (): Promise<VelocityResponse> => {
+    const response = await apiClient.get<VelocityResponse>('/todos/velocity');
+    return response.data;
   },
 };
 

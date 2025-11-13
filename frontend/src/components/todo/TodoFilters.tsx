@@ -11,15 +11,19 @@ import { Card, CardContent } from '@/components/ui/card';
 interface TodoFiltersProps {
   priorityFilter: string;
   dueDateFilter: string;
+  storyPointsFilter: string;
   onPriorityChange: (value: string) => void;
   onDueDateChange: (value: string) => void;
+  onStoryPointsChange: (value: string) => void;
 }
 
 export default function TodoFilters({
   priorityFilter,
   dueDateFilter,
+  storyPointsFilter,
   onPriorityChange,
   onDueDateChange,
+  onStoryPointsChange,
 }: TodoFiltersProps) {
   return (
     <Card className="mb-4">
@@ -55,6 +59,22 @@ export default function TodoFilters({
                 <SelectItem value="this_week">This Week</SelectItem>
                 <SelectItem value="overdue">Overdue</SelectItem>
                 <SelectItem value="none">No Due Date</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
+            <Label htmlFor="story-points-filter" className="text-sm whitespace-nowrap">
+              Story Points:
+            </Label>
+            <Select value={storyPointsFilter} onValueChange={onStoryPointsChange}>
+              <SelectTrigger id="story-points-filter" className="w-full md:w-40">
+                <SelectValue placeholder="All ranges" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="1-2">1-2 (Small)</SelectItem>
+                <SelectItem value="3">3 (Medium)</SelectItem>
+                <SelectItem value="5-8">5-8 (Large)</SelectItem>
               </SelectContent>
             </Select>
           </div>

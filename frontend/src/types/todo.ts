@@ -23,6 +23,7 @@ export interface Todo {
   status: "todo" | "in_progress" | "done";
   due_date?: string;
   priority: string;
+  story_points?: number | null;
   subtasks?: Subtask[];
   subtask_progress?: string;
   created_at: string;
@@ -35,6 +36,7 @@ export interface CreateTodoRequest {
   status?: "todo" | "in_progress" | "done";
   due_date?: string;
   priority?: "High" | "Medium" | "Low";
+  story_points?: number;
 }
 
 export interface UpdateTodoRequest {
@@ -43,5 +45,6 @@ export interface UpdateTodoRequest {
   status?: "todo" | "in_progress" | "done";
   due_date?: string;
   priority?: "High" | "Medium" | "Low";
+  story_points?: number;
 }
 

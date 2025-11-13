@@ -18,9 +18,11 @@ import (
 // @Tags         todos
 // @Accept       json
 // @Produce      json
-// @Param        sort_by  query     string  false  "Sort by field (due_date, priority, created_at)"  default(created_at)
-// @Param        order    query     string  false  "Sort order (asc, desc)"  default(desc)
-// @Param        status   query     string  false  "Filter by status (todo, in_progress, done)"
+// @Param        sort_by         query     string  false  "Sort by field (due_date, priority, created_at)"  default(created_at)
+// @Param        order           query     string  false  "Sort order (asc, desc)"  default(desc)
+// @Param        status          query     string  false  "Filter by status (todo, in_progress, done)"
+// @Param        story_points_min  query     int     false  "Minimum story points for filtering"
+// @Param        story_points_max  query     int     false  "Maximum story points for filtering"
 // @Success      200      {array}   models.Todo
 // @Failure      500      {object}  map[string]string
 // @Router       /todos [get]
@@ -35,6 +37,8 @@ func GetTodos(c *gin.Context) {
 	sortBy := c.DefaultQuery("sort_by", "created_at")
 	order := c.DefaultQuery("order", "desc")
 	statusFilter := c.Query("status")
+	storyPointsMinStr := c.Query("story_points_min")
+	storyPointsMaxStr := c.Query("story_points_max")
 
 	// Validate sort_by field
 	validSortFields := map[string]bool{
@@ -80,16 +84,47 @@ func GetTodos(c *gin.Context) {
 		orderByClause = "ORDER BY created_at " + order
 	}
 
-	// Build WHERE clause for status filter
-	whereClause := ""
+	// Build WHERE clause for filters
+	whereConditions := []string{}
 	queryArgs := []interface{}{}
+	argIndex := 1
+
 	if statusFilter != "" {
-		whereClause = "WHERE status = $1"
+		whereConditions = append(whereConditions, "status = $"+strconv.Itoa(argIndex))
 		queryArgs = append(queryArgs, statusFilter)
+		argIndex++
+	}
+
+	// Parse and validate story points min
+	if storyPointsMinStr != "" {
+		storyPointsMin, err := strconv.Atoi(storyPointsMinStr)
+		if err == nil && storyPointsMin >= 0 {
+			whereConditions = append(whereConditions, "story_points >= $"+strconv.Itoa(argIndex))
+			queryArgs = append(queryArgs, storyPointsMin)
+			argIndex++
+		}
+	}
+
+	// Parse and validate story points max
+	if storyPointsMaxStr != "" {
+		storyPointsMax, err := strconv.Atoi(storyPointsMaxStr)
+		if err == nil && storyPointsMax >= 0 {
+			whereConditions = append(whereConditions, "story_points <= $"+strconv.Itoa(argIndex))
+			queryArgs = append(queryArgs, storyPointsMax)
+			argIndex++
+		}
+	}
+
+	whereClause := ""
+	if len(whereConditions) > 0 {
+		whereClause = "WHERE " + whereConditions[0]
+		for i := 1; i < len(whereConditions); i++ {
+			whereClause += " AND " + whereConditions[i]
+		}
 	}
 
 	rows, err := db.Pool.Query(c.Request.Context(), `
-		SELECT id, title, COALESCE(description, '') as description, status, due_date, priority, created_at, updated_at 
+		SELECT id, title, COALESCE(description, '') as description, status, due_date, priority, story_points, created_at, updated_at 
 		FROM todos 
 		`+whereClause+`
 		`+orderByClause+`
@@ -101,10 +136,10 @@ func GetTodos(c *gin.Context) {
 	}
 	defer rows.Close()
 
-	var todos []models.Todo
+	todos := []models.Todo{} // Initialize as empty slice to ensure JSON serializes to [] not null
 	for rows.Next() {
 		var todo models.Todo
-		if err := rows.Scan(&todo.ID, &todo.Title, &todo.Description, &todo.Status, &todo.DueDate, &todo.Priority, &todo.CreatedAt, &todo.UpdatedAt); err != nil {
+		if err := rows.Scan(&todo.ID, &todo.Title, &todo.Description, &todo.Status, &todo.DueDate, &todo.Priority, &todo.StoryPoints, &todo.CreatedAt, &todo.UpdatedAt); err != nil {
 			log.Printf("Error scanning todo: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to scan todo", "details": err.Error()})
 			return
@@ -141,10 +176,10 @@ func GetTodo(c *gin.Context) {
 
 	var todo models.Todo
 	err = db.Pool.QueryRow(c.Request.Context(), `
-		SELECT id, title, COALESCE(description, '') as description, status, due_date, priority, created_at, updated_at 
+		SELECT id, title, COALESCE(description, '') as description, status, due_date, priority, story_points, created_at, updated_at 
 		FROM todos 
 		WHERE id = $1
-	`, id).Scan(&todo.ID, &todo.Title, &todo.Description, &todo.Status, &todo.DueDate, &todo.Priority, &todo.CreatedAt, &todo.UpdatedAt)
+	`, id).Scan(&todo.ID, &todo.Title, &todo.Description, &todo.Status, &todo.DueDate, &todo.Priority, &todo.StoryPoints, &todo.CreatedAt, &todo.UpdatedAt)
 
 	if err == pgx.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Todo not found"})
@@ -197,13 +232,22 @@ func CreateTodo(c *gin.Context) {
 		status = "todo"
 	}
 
+	// Validate story points if provided
+	if req.StoryPoints != nil {
+		validStoryPoints := map[int]bool{1: true, 2: true, 3: true, 5: true, 8: true}
+		if !validStoryPoints[*req.StoryPoints] {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid story points value. Must be one of: 1, 2, 3, 5, 8"})
+			return
+		}
+	}
+
 	var todo models.Todo
 	err := db.Pool.QueryRow(c.Request.Context(), `
-		INSERT INTO todos (title, description, status, due_date, priority, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-		RETURNING id, title, COALESCE(description, '') as description, status, due_date, priority, created_at, updated_at
-	`, req.Title, description, status, req.DueDate, priority).Scan(
-		&todo.ID, &todo.Title, &todo.Description, &todo.Status, &todo.DueDate, &todo.Priority, &todo.CreatedAt, &todo.UpdatedAt,
+		INSERT INTO todos (title, description, status, due_date, priority, story_points, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+		RETURNING id, title, COALESCE(description, '') as description, status, due_date, priority, story_points, created_at, updated_at
+	`, req.Title, description, status, req.DueDate, priority, req.StoryPoints).Scan(
+		&todo.ID, &todo.Title, &todo.Description, &todo.Status, &todo.DueDate, &todo.Priority, &todo.StoryPoints, &todo.CreatedAt, &todo.UpdatedAt,
 	)
 
 	if err != nil {
@@ -258,6 +302,15 @@ func UpdateTodo(c *gin.Context) {
 		status = req.Status
 	}
 
+	// Validate story points if provided
+	if req.StoryPoints != nil {
+		validStoryPoints := map[int]bool{1: true, 2: true, 3: true, 5: true, 8: true}
+		if !validStoryPoints[*req.StoryPoints] {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid story points value. Must be one of: 1, 2, 3, 5, 8"})
+			return
+		}
+	}
+
 	err = db.Pool.QueryRow(c.Request.Context(), `
 		UPDATE todos 
 		SET title = COALESCE($1, title),
@@ -265,11 +318,12 @@ func UpdateTodo(c *gin.Context) {
 		    status = COALESCE($3, status),
 		    due_date = COALESCE($4, due_date),
 		    priority = COALESCE($5, priority),
+		    story_points = COALESCE($6, story_points),
 		    updated_at = NOW()
-		WHERE id = $6
-		RETURNING id, title, COALESCE(description, '') as description, status, due_date, priority, created_at, updated_at
-	`, req.Title, description, status, req.DueDate, req.Priority, id).Scan(
-		&todo.ID, &todo.Title, &todo.Description, &todo.Status, &todo.DueDate, &todo.Priority, &todo.CreatedAt, &todo.UpdatedAt,
+		WHERE id = $7
+		RETURNING id, title, COALESCE(description, '') as description, status, due_date, priority, story_points, created_at, updated_at
+	`, req.Title, description, status, req.DueDate, req.Priority, req.StoryPoints, id).Scan(
+		&todo.ID, &todo.Title, &todo.Description, &todo.Status, &todo.DueDate, &todo.Priority, &todo.StoryPoints, &todo.CreatedAt, &todo.UpdatedAt,
 	)
 
 	if err == pgx.ErrNoRows {
@@ -282,6 +336,55 @@ func UpdateTodo(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, todo)
+}
+
+// GetVelocity godoc
+// @Summary      Get velocity metrics
+// @Description  Get total estimated and completed story points
+// @Tags         todos
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  map[string]int
+// @Failure      500  {object}  map[string]string
+// @Router       /todos/velocity [get]
+func GetVelocity(c *gin.Context) {
+	if db.Pool == nil {
+		log.Printf("Error: database pool is nil")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database connection not initialized"})
+		return
+	}
+
+	var totalEstimated int
+	err := db.Pool.QueryRow(c.Request.Context(), `
+		SELECT COALESCE(SUM(story_points), 0) 
+		FROM todos 
+		WHERE story_points IS NOT NULL
+	`).Scan(&totalEstimated)
+	if err != nil {
+		log.Printf("Error querying total estimated story points: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch velocity", "details": err.Error()})
+		return
+	}
+
+	var totalCompleted int
+	err = db.Pool.QueryRow(c.Request.Context(), `
+		SELECT COALESCE(SUM(story_points), 0) 
+		FROM todos 
+		WHERE status = 'done' AND story_points IS NOT NULL
+	`).Scan(&totalCompleted)
+	if err != nil {
+		log.Printf("Error querying total completed story points: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch velocity", "details": err.Error()})
+		return
+	}
+
+	remaining := totalEstimated - totalCompleted
+
+	c.JSON(http.StatusOK, gin.H{
+		"total_estimated": totalEstimated,
+		"completed":       totalCompleted,
+		"remaining":       remaining,
+	})
 }
 
 // DeleteTodo godoc

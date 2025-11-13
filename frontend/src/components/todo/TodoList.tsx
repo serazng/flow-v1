@@ -27,9 +27,10 @@ import TodoListSkeleton from './TodoListSkeleton';
 interface TodoListProps {
   priorityFilter?: string;
   dueDateFilter?: string;
+  storyPointsFilter?: string;
 }
 
-export default function TodoList({ priorityFilter, dueDateFilter }: TodoListProps) {
+export default function TodoList({ priorityFilter, dueDateFilter, storyPointsFilter }: TodoListProps) {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,15 +40,41 @@ export default function TodoList({ priorityFilter, dueDateFilter }: TodoListProp
   const [sortOrder, setSortOrder] = useState<string>('desc');
   const [expandedTodos, setExpandedTodos] = useState<Set<number>>(new Set());
 
+  const getStoryPointsRange = (filter?: string): { min?: number; max?: number } => {
+    if (!filter) return {};
+    switch (filter) {
+      case '1-2':
+        return { min: 1, max: 2 };
+      case '3':
+        return { min: 3, max: 3 };
+      case '5-8':
+        return { min: 5, max: 8 };
+      default:
+        return {};
+    }
+  };
+
   const fetchTodos = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await todoApi.getAll(sortBy, sortOrder);
-      setTodos(data);
+      const storyPointsRange = getStoryPointsRange(storyPointsFilter);
+      const data = await todoApi.getAll(sortBy, sortOrder, undefined, storyPointsRange.min, storyPointsRange.max);
+      // Ensure data is always an array (handle null responses from backend)
+      if (Array.isArray(data)) {
+        setTodos(data);
+      } else if (data === null || data === undefined) {
+        // Backend may return null when no results - treat as empty array
+        setTodos([]);
+      } else {
+        console.error('Unexpected API response format:', data);
+        setTodos([]);
+        setError('Invalid response from server');
+      }
     } catch (err) {
       setError('Failed to load todos');
       console.error(err);
+      setTodos([]); // Ensure todos is always an array
     } finally {
       setLoading(false);
     }
@@ -56,10 +83,11 @@ export default function TodoList({ priorityFilter, dueDateFilter }: TodoListProp
   useEffect(() => {
     fetchTodos();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortBy, sortOrder]);
+  }, [sortBy, sortOrder, storyPointsFilter]);
 
   // Filter todos based on priority and due date
-  const filteredTodos = todos.filter(todo => {
+  const filteredTodos = (todos || []).filter(todo => {
+    if (!todo) return false;
     if (priorityFilter && todo.priority !== priorityFilter) {
       return false;
     }
@@ -93,14 +121,15 @@ export default function TodoList({ priorityFilter, dueDateFilter }: TodoListProp
     return true;
   });
 
-  const handleCreate = async (title: string, description: string, dueDate?: string, priority?: string, status?: string) => {
+  const handleCreate = async (title: string, description: string, dueDate?: string, priority?: string, status?: string, storyPoints?: number) => {
     try {
       await todoApi.create({ 
         title, 
         description: description || undefined,
         status: status as "todo" | "in_progress" | "done" | undefined,
         due_date: dueDate || undefined,
-        priority: priority as "High" | "Medium" | "Low" | undefined
+        priority: priority as "High" | "Medium" | "Low" | undefined,
+        story_points: storyPoints
       });
       setIsDialogOpen(false);
       fetchTodos();
@@ -110,14 +139,15 @@ export default function TodoList({ priorityFilter, dueDateFilter }: TodoListProp
     }
   };
 
-  const handleUpdate = async (id: number, title?: string, description?: string, status?: string, dueDate?: string, priority?: string) => {
+  const handleUpdate = async (id: number, title?: string, description?: string, status?: string, dueDate?: string, priority?: string, storyPoints?: number) => {
     try {
       const updatedTodo = await todoApi.update(id, { 
         title, 
         description, 
         status: status as "todo" | "in_progress" | "done" | undefined,
         due_date: dueDate,
-        priority: priority as "High" | "Medium" | "Low" | undefined
+        priority: priority as "High" | "Medium" | "Low" | undefined,
+        story_points: storyPoints
       });
       // Update state with server response
       setTodos(prevTodos =>
@@ -141,7 +171,7 @@ export default function TodoList({ priorityFilter, dueDateFilter }: TodoListProp
   };
 
   const handleStatusChange = (todo: Todo, newStatus: "todo" | "in_progress" | "done") => {
-    handleUpdate(todo.id, todo.title, todo.description, newStatus, todo.due_date, todo.priority);
+    handleUpdate(todo.id, todo.title, todo.description, newStatus, todo.due_date, todo.priority, todo.story_points ?? undefined);
   };
 
   const handleEdit = (todo: Todo) => {
@@ -149,7 +179,7 @@ export default function TodoList({ priorityFilter, dueDateFilter }: TodoListProp
     setIsDialogOpen(true);
   };
 
-  const handleEditSubmit = async (title: string, description: string, dueDate?: string, priority?: string, status?: string) => {
+  const handleEditSubmit = async (title: string, description: string, dueDate?: string, priority?: string, status?: string, storyPoints?: number) => {
     if (editingTodo) {
       try {
         const updatedTodo = await todoApi.update(editingTodo.id, { 
@@ -157,7 +187,8 @@ export default function TodoList({ priorityFilter, dueDateFilter }: TodoListProp
           description,
           status: status as "todo" | "in_progress" | "done" | undefined,
           due_date: dueDate,
-          priority: priority as "High" | "Medium" | "Low" | undefined
+          priority: priority as "High" | "Medium" | "Low" | undefined,
+          story_points: storyPoints
         });
         // Update state with server response
         setTodos(prevTodos =>
@@ -242,11 +273,12 @@ export default function TodoList({ priorityFilter, dueDateFilter }: TodoListProp
                   <TodoForm
                     key={editingTodo?.id ?? 'create'}
                     onSubmit={editingTodo ? handleEditSubmit : handleCreate}
-                    initialTitle={editingTodo?.title}
-                    initialDescription={editingTodo?.description}
+                    initialTitle={editingTodo?.title || ''}
+                    initialDescription={editingTodo?.description || ''}
                     initialDueDate={editingTodo?.due_date ? new Date(editingTodo.due_date).toISOString().split('T')[0] : ''}
                     initialPriority={editingTodo?.priority || 'Medium'}
                     initialStatus={editingTodo?.status || 'todo'}
+                    initialStoryPoints={editingTodo?.story_points}
                   />
                 </DialogContent>
               </Dialog>
@@ -324,6 +356,11 @@ export default function TodoList({ priorityFilter, dueDateFilter }: TodoListProp
                             }`}>
                               {todo.priority}
                             </span>
+                            {todo.story_points != null && (
+                              <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                {todo.story_points} SP
+                              </span>
+                            )}
                             {overdue && (
                               <span className="text-xs px-2 py-0.5 rounded bg-red-500 text-white">
                                 Overdue

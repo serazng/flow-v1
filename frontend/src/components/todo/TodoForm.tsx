@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,12 +11,13 @@ import {
 } from '@/components/ui/select';
 
 interface TodoFormProps {
-  onSubmit: (title: string, description: string, dueDate?: string, priority?: string, status?: string) => void;
+  onSubmit: (title: string, description: string, dueDate?: string, priority?: string, status?: string, storyPoints?: number) => void;
   initialTitle?: string;
   initialDescription?: string;
   initialDueDate?: string;
   initialPriority?: string;
   initialStatus?: string;
+  initialStoryPoints?: number | null;
 }
 
 export default function TodoForm({ 
@@ -25,23 +26,46 @@ export default function TodoForm({
   initialDescription = '',
   initialDueDate = '',
   initialPriority = 'Medium',
-  initialStatus = 'todo'
+  initialStatus = 'todo',
+  initialStoryPoints
 }: TodoFormProps) {
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
   const [dueDate, setDueDate] = useState(initialDueDate);
   const [priority, setPriority] = useState(initialPriority || 'Medium');
   const [status, setStatus] = useState(initialStatus || 'todo');
+  const [storyPoints, setStoryPoints] = useState<string>(() => {
+    if (initialStoryPoints === undefined || initialStoryPoints === null) {
+      return 'none';
+    }
+    return initialStoryPoints.toString();
+  });
+
+  // Update state when initial values change (for edit mode)
+  useEffect(() => {
+    if (initialTitle !== undefined) setTitle(initialTitle);
+    if (initialDescription !== undefined) setDescription(initialDescription);
+    if (initialDueDate !== undefined) setDueDate(initialDueDate);
+    if (initialPriority !== undefined) setPriority(initialPriority || 'Medium');
+    if (initialStatus !== undefined) setStatus(initialStatus || 'todo');
+    if (initialStoryPoints !== undefined && initialStoryPoints !== null) {
+      setStoryPoints(initialStoryPoints.toString());
+    } else if (initialStoryPoints === null) {
+      setStoryPoints('none');
+    }
+  }, [initialTitle, initialDescription, initialDueDate, initialPriority, initialStatus, initialStoryPoints]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (title.trim()) {
-      onSubmit(title.trim(), description.trim(), dueDate || undefined, priority, status);
+      const storyPointsValue = storyPoints === 'none' || storyPoints === '' ? undefined : parseInt(storyPoints, 10);
+      onSubmit(title.trim(), description.trim(), dueDate || undefined, priority, status, storyPointsValue);
       setTitle('');
       setDescription('');
       setDueDate('');
       setPriority('Medium');
       setStatus('todo');
+      setStoryPoints('none');
     }
   };
 
@@ -98,6 +122,22 @@ export default function TodoForm({
             <SelectItem value="todo">Todo</SelectItem>
             <SelectItem value="in_progress">In Progress</SelectItem>
             <SelectItem value="done">Done</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="storyPoints">Story Points (optional)</Label>
+        <Select value={storyPoints || 'none'} onValueChange={setStoryPoints}>
+          <SelectTrigger id="storyPoints">
+            <SelectValue placeholder="None" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">None</SelectItem>
+            <SelectItem value="1">1</SelectItem>
+            <SelectItem value="2">2</SelectItem>
+            <SelectItem value="3">3</SelectItem>
+            <SelectItem value="5">5</SelectItem>
+            <SelectItem value="8">8</SelectItem>
           </SelectContent>
         </Select>
       </div>

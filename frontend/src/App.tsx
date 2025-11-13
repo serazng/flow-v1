@@ -5,6 +5,7 @@ import ViewToggle from './components/todo/ViewToggle';
 import TodoList from './components/todo/TodoList';
 import KanbanBoard from './components/todo/KanbanBoard';
 import TodoFilters from './components/todo/TodoFilters';
+import VelocityDisplay from './components/todo/VelocityDisplay';
 import './App.css';
 
 type ViewType = 'list' | 'board';
@@ -13,6 +14,7 @@ function App() {
   const [view, setView] = useState<ViewType>('list');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [dueDateFilter, setDueDateFilter] = useState<string>('all');
+  const [storyPointsFilter, setStoryPointsFilter] = useState<string>('all');
 
   return (
     <ThemeProvider>
@@ -24,21 +26,26 @@ function App() {
           </div>
         </header>
         <main className="container mx-auto px-4 md:px-6 py-4 md:py-6">
+          <VelocityDisplay />
           <TodoFilters
             priorityFilter={priorityFilter}
             dueDateFilter={dueDateFilter}
+            storyPointsFilter={storyPointsFilter}
             onPriorityChange={setPriorityFilter}
             onDueDateChange={setDueDateFilter}
+            onStoryPointsChange={setStoryPointsFilter}
           />
           {view === 'list' ? (
             <TodoList
               priorityFilter={priorityFilter !== 'all' ? priorityFilter : undefined}
               dueDateFilter={dueDateFilter !== 'all' ? dueDateFilter : undefined}
+              storyPointsFilter={storyPointsFilter !== 'all' ? storyPointsFilter : undefined}
             />
           ) : (
             <KanbanBoard
               priorityFilter={priorityFilter !== 'all' ? priorityFilter : undefined}
               dueDateFilter={dueDateFilter !== 'all' ? dueDateFilter : undefined}
+              storyPointsFilter={storyPointsFilter !== 'all' ? storyPointsFilter : undefined}
             />
           )}
         </main>

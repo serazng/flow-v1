@@ -102,6 +102,11 @@ export default function KanbanCard({ todo, onEdit }: KanbanCardProps) {
               >
                 {todo.priority}
               </span>
+              {todo.story_points != null && (
+                <span className="text-xs px-2 py-0.5 rounded shrink-0 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                  {todo.story_points} SP
+                </span>
+              )}
             </div>
             {todo.description && (
               <p
