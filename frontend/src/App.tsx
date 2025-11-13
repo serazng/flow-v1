@@ -5,7 +5,6 @@ import ViewToggle from './components/todo/ViewToggle';
 import TodoList from './components/todo/TodoList';
 import KanbanBoard from './components/todo/KanbanBoard';
 import TodoFilters from './components/todo/TodoFilters';
-import VelocityDisplay from './components/todo/VelocityDisplay';
 import './App.css';
 
 type ViewType = 'list' | 'board';
@@ -26,7 +25,6 @@ function App() {
           </div>
         </header>
         <main className="container mx-auto px-4 md:px-6 py-4 md:py-6">
-          <VelocityDisplay />
           <TodoFilters
             priorityFilter={priorityFilter}
             dueDateFilter={dueDateFilter}

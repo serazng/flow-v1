@@ -10,12 +10,6 @@ const apiClient = axios.create({
   },
 });
 
-export interface VelocityResponse {
-  total_estimated: number;
-  completed: number;
-  remaining: number;
-}
-
 export const todoApi = {
   getAll: async (sortBy?: string, order?: string, status?: string, storyPointsMin?: number, storyPointsMax?: number): Promise<Todo[]> => {
     const params = new URLSearchParams();
@@ -47,11 +41,6 @@ export const todoApi = {
 
   delete: async (id: number): Promise<void> => {
     await apiClient.delete(`/todos/${id}`);
-  },
-
-  getVelocity: async (): Promise<VelocityResponse> => {
-    const response = await apiClient.get<VelocityResponse>('/todos/velocity');
-    return response.data;
   },
 };
 

@@ -338,55 +338,6 @@ func UpdateTodo(c *gin.Context) {
 	c.JSON(http.StatusOK, todo)
 }
 
-// GetVelocity godoc
-// @Summary      Get velocity metrics
-// @Description  Get total estimated and completed story points
-// @Tags         todos
-// @Accept       json
-// @Produce      json
-// @Success      200  {object}  map[string]int
-// @Failure      500  {object}  map[string]string
-// @Router       /todos/velocity [get]
-func GetVelocity(c *gin.Context) {
-	if db.Pool == nil {
-		log.Printf("Error: database pool is nil")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database connection not initialized"})
-		return
-	}
-
-	var totalEstimated int
-	err := db.Pool.QueryRow(c.Request.Context(), `
-		SELECT COALESCE(SUM(story_points), 0) 
-		FROM todos 
-		WHERE story_points IS NOT NULL
-	`).Scan(&totalEstimated)
-	if err != nil {
-		log.Printf("Error querying total estimated story points: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch velocity", "details": err.Error()})
-		return
-	}
-
-	var totalCompleted int
-	err = db.Pool.QueryRow(c.Request.Context(), `
-		SELECT COALESCE(SUM(story_points), 0) 
-		FROM todos 
-		WHERE status = 'done' AND story_points IS NOT NULL
-	`).Scan(&totalCompleted)
-	if err != nil {
-		log.Printf("Error querying total completed story points: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch velocity", "details": err.Error()})
-		return
-	}
-
-	remaining := totalEstimated - totalCompleted
-
-	c.JSON(http.StatusOK, gin.H{
-		"total_estimated": totalEstimated,
-		"completed":       totalCompleted,
-		"remaining":       remaining,
-	})
-}
-
 // DeleteTodo godoc
 // @Summary      Delete a todo
 // @Description  Delete a todo item by its ID
